@@ -162,6 +162,7 @@ class MDSystem(Modeller):
             A reporter is defined as a 5-tuple of (filePrefix, offset, trajInterval, 
             stateDataInterval, atomSubset)
 
+
         Returns
         -------
         mdtools.MDSystem
@@ -318,7 +319,7 @@ class MDSystem(Modeller):
         n : int or simtk.unit
             Number of steps or chemical time of simulation
         outputStartingFrame : bool
-            Whether to output the initial frame of a simulation
+            Whether to output the initial frame of a simulation; only applies to HDF5Reporter reporters
         reportLargeForceThreshold : int
             If <= 0, will not report; otherwise, print a list of
             all atoms with net forces on them exceeding the
@@ -326,34 +327,16 @@ class MDSystem(Modeller):
         """
 
         # If simulation step is 0, output the starting configuration
-        # if self.simulation.currentStep == 0 and outputStartingFrame:
-        #     for reporter in self.simulation.reporters:
-        #         report = reporter.describeNextReport(self.simulation)
-        #         # if isinstance(report, dict):
-        #         #     report = report[1:]
-        #         state = self.simulation.context.getState(*report[1:])
-        #         reporter.report(self.simulation, state)
+        if self.simulation.currentStep == 0 and outputStartingFrame:
+            for reporter in self.simulation.reporters:
+                if isinstance(reporter, HDF5Reporter):
+                    report = reporter.describeNextReport(self.simulation)
+                    state = self.simulation.context.getState(*report[1:])
+                    reporter.report(self.simulation, state)
         n = self._time2steps(n)
-        # while n > 0:
-            # if self._more_reporters:
-            #     next_offset = self._time2steps(self.reporters[0][1])
-            #     n_steps = min(n, next_offset - self.simulation.currentStep)
-            #     self.simulation.step(n_steps)
-            #     print(next_offset, self.simulation.currentStep, n_steps)
-            #     # Append new reporter to the list of reporters attached to the simulation if necessary
-            #     filePrefix, offset, trajInterval, stateDataInterval, atomSubset = self.reporters.pop(0)
-            #     # Requires rebuilding mdtraj
-            #     if trajInterval > 0:
-            #         self.simulation.reporters.append(HDF5Reporter(f"{filePrefix}.h5", trajInterval, atomSubset=atomSubset, startTime=self.simulation.currentStep))
-            #     # This doesn't work as it currently stands!
-            #     if stateDataInterval > 0:
-            #         self.simulation.reporters.append(StateDataReporter(f"{filePrefix}.csv", stateDataInterval, step=True, time=True, volume=True, totalEnergy=True, temperature=True, elapsedTime=True))
-            #     if len(self.reporters) == 0:
-            #         self._more_reporters = False
-            #     n -= n_steps
-            # else:
+
+        # Actually run the simulation (using OpenMM)
         self.simulation.step(n)
-                # n = 0
 
         # Optionally report large forces
         if reportLargeForceThreshold > 0:
